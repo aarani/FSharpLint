@@ -1,4 +1,4 @@
-module FSharpLint.Rules.NonPublicValuesNames
+module FSharpLint.Rules.InternalValuesNames
 
 open FSharp.Compiler.Syntax
 open FSharpLint.Framework.Ast
@@ -20,7 +20,7 @@ let private getValueOrFunctionIdents typeChecker isPublic pattern =
         match List.tryLast longIdent.Lid with
         | Some ident when not (isActivePattern ident) && singleIdentifier ->
             let checkNotUnionCase = checkNotUnionCase ident
-            if not isPublic then
+            if isPublic = Accessibility.Internal then
                 (ident, ident.idText, Some checkNotUnionCase)
                 |> Array.singleton
             else
@@ -30,29 +30,20 @@ let private getValueOrFunctionIdents typeChecker isPublic pattern =
 
 let private getIdentifiers (args:AstNodeRuleParams) =
     match args.AstNode with
-    | AstNode.Expression(SynExpr.ForEach(_, _, true, pattern, _, _, _)) ->
-        getPatternIdents false (getValueOrFunctionIdents args.CheckInfo) false pattern
     | AstNode.Binding(SynBinding(access, _, _, _, attributes, _, valData, pattern, _, _, _, _)) ->
         if not (isLiteral attributes) then
             match identifierTypeFromValData valData with
             | Value | Function ->
-                let isPublic = isPublic args.SyntaxArray args.NodeIndex
-                getPatternIdents isPublic (getValueOrFunctionIdents args.CheckInfo) true pattern
+                let accessibility = getAccessibility args.SyntaxArray args.NodeIndex
+                getPatternIdents accessibility (getValueOrFunctionIdents args.CheckInfo) true pattern
             | _ -> Array.empty
         else
             Array.empty
-    | AstNode.Expression(SynExpr.For(_, identifier, _, _, _, _, _)) ->
-        (identifier, identifier.idText, None) |> Array.singleton
-    | AstNode.Match(SynMatchClause(pattern, _, _, _, _)) ->
-        match pattern with
-        | SynPat.Named(_, identifier, isThis, _, _) when not isThis ->
-            (identifier, identifier.idText, None) |> Array.singleton
-        | _ -> Array.empty
     | _ -> Array.empty
 
 let rule config =
-    { Name = "NonPublicValuesNames"
-      Identifier = Identifiers.NonPublicValuesNames
+    { Name = "InternalValuesNames"
+      Identifier = Identifiers.InternalValuesNames
       RuleConfig = { NamingRuleConfig.Config = config; GetIdentifiersToCheck = getIdentifiers } }
     |> toAstNodeRule
     |> AstNodeRule
