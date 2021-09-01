@@ -649,6 +649,10 @@ let flattenConfig (config:Configuration) =
             config.NoPartialFunctions |> Option.bind (constructRuleWithConfig NoPartialFunctions.rule)
         |] |> Array.choose id
 
+    if config.NonPublicValuesNames.IsSome && 
+        (config.PrivateValuesNames.IsSome || config.PublicValuesNames.IsSome) then
+        failwith "nonPublicValuesNames has been deprecated, use privateValuesNames and/or internalValuesNames instead"
+
     let astNodeRules = ResizeArray()
     let lineRules = ResizeArray()
     let mutable indentationRule = None
